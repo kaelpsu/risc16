@@ -30,7 +30,6 @@ SC_MODULE(regfile) {
             }
         } else if (write_enable.read() && address3.read() != 0) {
             registers[address3.read()] = write_data.read();
-            // std::cout << "Escrevendo no registrador " << address3.read() << ": " << write_data.read().to_string(SC_HEX) << std::endl;
         }
     }
 
@@ -38,8 +37,6 @@ SC_MODULE(regfile) {
     void read_process() {
         read_data1.write(registers[address1.read()]);
         read_data2.write(registers[address2.read()]);
-        // std::cout << "RS Lendo do registrador " << address1.read() << ": " << read_data1.read().to_string(SC_HEX) << std::endl;
-        // std::cout << "RT Lendo do registrador " << address2.read() << ": " << read_data2.read().to_string(SC_HEX) << std::endl;
     }
 
     SC_CTOR(regfile) {

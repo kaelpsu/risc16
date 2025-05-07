@@ -65,7 +65,6 @@ SC_MODULE(memory) {
                 if (word_index_tmp < 32) {
                     sc_uint<5> word_index = word_index_tmp; // só converte após checar
                     mem[word_index] = write_data.read();
-                    // std::cout << "Escrevendo valor: " << write_data.read().to_string(SC_BIN) << " no índice: " << word_index << std::endl;
                 }
             }
         }
@@ -76,7 +75,6 @@ SC_MODULE(memory) {
         sc_uint<5> word_index = address.read() >> 1;  // divide by 2
         if (word_index < 32) {
             read_data.write(mem[word_index]);
-            // std::cout << "[MEMORIA] Lendo valor: " << mem[word_index].to_string(SC_BIN) << " do índice: " << word_index << std::endl;
         } else {
             read_data.write(0);  // Optional: undefined behavior for out-of-range
         }
