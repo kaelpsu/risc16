@@ -42,6 +42,10 @@ After building, execute the desired testbench:
 
 ## RISC CPU Design
 
+![Image](risc16.png)
+
+![Image](controle.png)
+
 ### Word Size
 
 - 16-bit architecture.
@@ -143,3 +147,5 @@ Format: [OP(4)][RD(3)][BASE(3)][OF(6)]
 | J        | 1001   | J    | PC ← ADDR << 1 + 2          |    |
 | JN       | 1010   | J    | If (N) PC ← ADDR << 1 + 2   |    |
 | JZ       | 1011   | J    | If (Z) PC ← ADDR << 1 + 2   |    |
+
+
