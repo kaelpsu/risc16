@@ -1,9 +1,7 @@
 #include <systemc.h>
-#include "memory.cpp"
+#include "stageHeaders.cpp"
+#include "pipeRegs.cpp"
 #include "control.cpp"
-#include "reg_file.cpp"
-#include "signext.cpp"
-#include "ula.cpp"
 
 SC_MODULE(cpu) {
     // Entradas
