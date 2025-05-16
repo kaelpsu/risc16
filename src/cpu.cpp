@@ -1,7 +1,6 @@
 #include <systemc.h>
 #include "stageHeaders.cpp"
 #include "pipeRegs.cpp"
-#include "control.cpp"
 
 SC_MODULE(cpu) {
     // Entradas
@@ -60,7 +59,7 @@ SC_MODULE(cpu) {
     sc_signal<bool> imm_source;
     
     void debug_signals() {
-        std::cout << "=====================================CICLO======================================" << std::endl;
+        std::cout << "===============================================CICLO================================================" << std::endl;
     }
 
     // INSTÂNCIAS DE MÓDULOS
@@ -110,30 +109,22 @@ SC_MODULE(cpu) {
         id_stage->clk(clk);
         id_stage->rst_n(rst_n);
         id_stage->instruction(instruction_id);
-        id_stage->reg_write(reg_write_wb);
+        id_stage->reg_write_in(reg_write_wb);
         id_stage->write_back_data(write_back_data);
         id_stage->dest_reg_back(dest_reg_wb);
-        id_stage->imm_source(imm_source);
+        id_stage->ula_zero(ula_zero_ex);
+        id_stage->ula_negative(ula_negative_ex);
         // saídas
         id_stage->read_data1(read_data1);
         id_stage->read_data2(read_data2);
         id_stage->immediate(immediate_id);
-        id_stage->op_out(op);        
-
-        // Unidade de Controle
-        control_unit = new control("control_unit");
-        // entrada
-        control_unit->op(op);
-        control_unit->ula_zero(ula_zero_ex);
-        control_unit->ula_negative(ula_negative_ex);
-        // saídas
-        control_unit->ula_op(ula_op_id);
-        control_unit->imm_source(imm_source);
-        control_unit->mem_write(mem_write_id);
-        control_unit->reg_write(reg_write_id);
-        control_unit->ula_src(ula_src_id);
-        control_unit->mem_to_reg(mem_to_reg_id);
-        control_unit->pc_src(pc_src_id);
+        id_stage->dest_reg_out(dest_reg_id);      
+        id_stage->ula_op(ula_op_id);
+        id_stage->mem_write(mem_write_id);
+        id_stage->reg_write_out(reg_write_id);
+        id_stage->ula_src(ula_src_id);
+        id_stage->mem_to_reg(mem_to_reg_id);
+        id_stage->pc_src(pc_src_id);
 
         // ID EX Pipe Register
         id_ex = new PipeReg_ID_EX("id_ex");
