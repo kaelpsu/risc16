@@ -6,6 +6,7 @@
 #include "ula.cpp"
 #include "signext.cpp"
 #include "reg_file.cpp"
+#include "control.cpp"
 
 // IF Stage
 SC_MODULE(IFStage) {
@@ -50,6 +51,9 @@ SC_MODULE(IFStage) {
     void debug_signals() {
         std::cout << "[IF]----------------------------------------------------------------------------" << std::endl;
         std::cout << "PC: " << pc.read().to_string(SC_BIN) << std::endl;
+        std::cout << "PC Branch: " << pc_branch.read().to_string(SC_BIN) << std::endl;
+        std::cout << "PC + 2: " << pc_out.read().to_string(SC_BIN) << std::endl;
+        std::cout << "PC Src: " << pc_src.read() << std::endl;
         std::cout << "PC Next: " << pc_next.read().to_string(SC_BIN) << std::endl;
         std::cout << "Instruction: " << instruction.read().to_string(SC_BIN) << std::endl;
         std::cout << "--------------------------------------------------------------------------------" << std::endl;
@@ -63,9 +67,9 @@ SC_MODULE(IFStage) {
         SC_METHOD(pc_process);
         sensitive << clk.pos();
         SC_METHOD(somador);
-        sensitive << clk.pos();
+        sensitive << pc;
         SC_METHOD(pc_mux);
-        sensitive << clk.pos();
+        sensitive << pc_src << pc_branch << pc_out;
         
         rst_mem.write(true); // desativa reset da memoria
         write_enable.write(false); // desativa escrita na memoria de instruções
@@ -88,22 +92,36 @@ SC_MODULE(IDStage) {
     sc_in<bool> clk, rst_n;
     sc_in<sc_uint<16>> instruction, write_back_data;
     sc_in<sc_uint<3>> dest_reg_back;
-    sc_in<bool> imm_source, reg_write;
+    sc_in<bool> reg_write_in;
 
+    sc_signal<bool> imm_source;
     sc_signal<sc_uint<4>> op;
-    sc_signal<sc_uint<3>> source_reg1, source_reg2, dest_reg;
+    sc_signal<sc_uint<3>> source_reg1, source_reg2;
     sc_signal<sc_uint<12>> raw_imm;
 
     sc_out<sc_uint<16>> read_data1, read_data2, immediate;
-    sc_out<sc_uint<4>> op_out;
+    sc_out<sc_uint<3>> dest_reg_out;
 
+    // CONTROL
+    // Entradas
+    sc_in<bool> ula_zero;
+    sc_in<bool> ula_negative;
+    // Saídas
+    sc_out<sc_uint<3>> ula_op;
+    sc_out<bool> mem_write;
+    sc_out<bool> reg_write_out;
+    sc_out<bool> ula_src;
+    sc_out<bool> mem_to_reg;
+    sc_out<bool> pc_src;
+
+    control *control_unit;
     regfile *regfile_inst;
     signext *sign_extender;
 
     void decode_instr() {
         auto instr = instruction.read();
         op.write(instr.range(15, 12));
-        dest_reg.write(instr.range(11, 9));
+        dest_reg_out.write(instr.range(11, 9));
         source_reg1.write(instr.range(8, 6));
         // mudar depois pra ser responsabilidade do controle
         source_reg2.write( (op.read() == 0b1000) ? instr.range(11, 9) : instr.range(5, 3));
@@ -116,7 +134,7 @@ SC_MODULE(IDStage) {
         std::cout << "Op: " << op.read().to_string(SC_BIN) << std::endl;
         std::cout << "Source Reg 1: " << source_reg1.read().to_string(SC_BIN) << std::endl;
         std::cout << "Source Reg 2: " << source_reg2.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Dest Reg Out: " << dest_reg.read().to_string(SC_BIN) << std::endl;
+        std::cout << "Dest Reg Out: " << dest_reg_out.read().to_string(SC_BIN) << std::endl;
         std::cout << "Immediate: " << immediate.read().to_string(SC_BIN) << std::endl;
         std::cout << "Read Data 1: " << read_data1.read().to_string(SC_BIN) << std::endl;
         std::cout << "Read Data 2: " << read_data2.read().to_string(SC_BIN) << std::endl;
@@ -127,7 +145,22 @@ SC_MODULE(IDStage) {
 
     SC_CTOR(IDStage) {
         SC_METHOD(decode_instr);
-        sensitive << clk.pos();
+        sensitive << instruction;
+        
+        // Unidade de Controle
+        control_unit = new control("control_unit");
+        // entrada
+        control_unit->op(op);
+        control_unit->ula_zero(ula_zero);
+        control_unit->ula_negative(ula_negative);
+        // saídas
+        control_unit->ula_op(ula_op);
+        control_unit->imm_source(imm_source);
+        control_unit->mem_write(mem_write);
+        control_unit->reg_write(reg_write_out);
+        control_unit->ula_src(ula_src);
+        control_unit->mem_to_reg(mem_to_reg);
+        control_unit->pc_src(pc_src);   
         
         // Módulo: Banco de Registradores
         regfile_inst = new regfile("regfile");
@@ -136,7 +169,7 @@ SC_MODULE(IDStage) {
         regfile_inst->address1(source_reg1);
         regfile_inst->address2(source_reg2);
         regfile_inst->address3(dest_reg_back);
-        regfile_inst->write_enable(reg_write);
+        regfile_inst->write_enable(reg_write_in);
         regfile_inst->write_data(write_back_data);
         regfile_inst->read_data1(read_data1);
         regfile_inst->read_data2(read_data2);
@@ -146,6 +179,7 @@ SC_MODULE(IDStage) {
         sign_extender->raw_src(raw_imm);
         sign_extender->imm_source(imm_source);
         sign_extender->immediate(immediate);
+
 
         SC_METHOD(debug_signals);
         sensitive << clk.pos();
@@ -196,7 +230,7 @@ SC_MODULE(EXStage) {
         SC_METHOD(select_src2);
         sensitive << read_data1 << read_data2 << immediate << ula_src;
         SC_METHOD(pc_calc);
-        sensitive << clk.pos();
+        sensitive << pc_in << immediate;
         
         ula_inst = new ula("ula_inst");
         // Connect inputs
