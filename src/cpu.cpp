@@ -8,257 +8,243 @@ SC_MODULE(cpu) {
     sc_in<bool> clk;
     sc_in<bool> rst_n;
 
-    // INTERNOS
-    sc_signal<sc_uint<16>> pc, pc_next;
+    // IF
+    sc_signal<sc_uint<16>> pc_if;
+    sc_signal<sc_uint<16>> instruction_if;
 
-    // INSTRUCTION
-    sc_signal<sc_uint<16>> instruction;
+    // ID
+    sc_signal<sc_uint<16>> pc_id;
+    sc_signal<sc_uint<16>> instruction_id;
+    sc_signal<sc_uint<16>> read_data1, read_data2;
+    sc_signal<sc_uint<3>> dest_reg_id;
+    sc_signal<sc_uint<16>> immediate_id;
+
+    // EX
+    sc_signal<sc_uint<16>> pc_ex;
+    sc_signal<sc_uint<16>> ula_src1, ula_src2;
+    sc_signal<sc_uint<16>> immediate_ex;
+    sc_signal<sc_uint<3>> dest_reg_ex;
+    sc_signal<sc_uint<16>> ula_result;
+    sc_signal<bool> ula_zero, ula_negative;
+
+    // MEM
+    sc_signal<sc_uint<16>> address;
+    sc_signal<sc_uint<16>> write_data;
+    sc_signal<sc_uint<16>> read_data_mem;
+    sc_signal<sc_uint<3>> dest_reg_mem;
+
+    // WB
+    sc_signal<sc_uint<16>> read_data_wb;
+    sc_signal<sc_uint<16>> ula_result_wb;
+    sc_signal<sc_uint<16>> write_back_data;
+    sc_signal<sc_uint<3>> dest_reg_wb;
+
+    // PC Branch   
+    sc_signal<sc_uint<16>> pc_branch;
+
 
     // CONTROLE
     sc_signal<sc_uint<4>> op;
-    sc_signal<bool> ula_zero;
-    sc_signal<bool> ula_negative;
+    sc_signal<bool> ula_zero_ex, ula_zero_mem;
+    sc_signal<bool> ula_negative_ex, ula_negative_mem;
 
-    sc_signal<sc_uint<3>> ula_op;
+    sc_signal<bool> mem_write_id, mem_write_ex, mem_write_mem;
+
+    sc_signal<bool> mem_to_reg_id, mem_to_reg_ex, mem_to_reg_mem, mem_to_reg_wb;
+
+    sc_signal<sc_uint<3>> ula_op_id, ula_op_ex;
+    sc_signal<bool> ula_src_id, ula_src_ex;
+
+    sc_signal<bool> reg_write_id, reg_write_ex, reg_write_mem, reg_write_wb;
+    sc_signal<bool> pc_src_id, pc_src_ex;
     sc_signal<bool> imm_source;
-    sc_signal<bool> mem_write;
-    sc_signal<bool> reg_write;
-    sc_signal<bool> ula_src;
-    sc_signal<bool> mem_to_reg;
-    sc_signal<bool> pc_src;
-
-    sc_signal<bool> rst_mem; // reset da memória de dados
-    sc_signal<bool> write_rom; // habilita escrita na memória de instruções
-    sc_signal<sc_uint<16>> null_data; // dado nulo para escrita na memória de instruções
     
-    // REGISTROS
-    sc_signal<sc_uint<3>> source_reg1, source_reg2, dest_reg;
-    sc_signal<sc_uint<16>> read_reg1, read_reg2, write_back_data;
-
-    // IMEDIATO
-    sc_signal<sc_uint<12>> raw_imm;
-    sc_signal<sc_uint<16>> immediate;
-
-    // ULA
-    sc_signal<sc_uint<16>> ula_result;
-    sc_signal<sc_uint<16>> ula_src2;
-
-    // MEMÓRIA DE DADOS
-    sc_signal<sc_uint<16>> mem_read;
-
-    // PROCESSO: Program Counter
-    void pc_logic() {
-        if (rst_n.read() == false) {
-            pc.write(0);
-        } else {
-            pc.write(pc_next.read());
-        }
-    }
-
-    // PROCESSO: Próximo PC
-    void pc_next_logic() {
-        switch (pc_src)
-        {
-        case 0b0: // PC + 2
-            pc_next.write(pc.read() + 2);
-            break;
-        case 0b1: // PC + 2 + (imediato << 1)
-            pc_next.write(pc.read() + 2 + (immediate.read() << 1));
-            break;
-        
-        default:
-            break;
-        }
-    }
-
     void debug_signals() {
         std::cout << "=====================================CICLO======================================" << std::endl;
-        std::cout << "[BASE]--------------------------------------------------------------------------" << std::endl;
-        std::cout << "PC: " << pc.read().to_string(SC_BIN) << std::endl;
-        std::cout << "PC Next: " << pc_next.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Instruction: " << instruction.read().to_string(SC_BIN) << std::endl;
-        std::cout << "--------------------------------------------------------------------------------" << std::endl;
-        std::cout << "[CONTROLE]----------------------------------------------------------------------" << std::endl;
-        std::cout << "Op: " << op.read().to_string(SC_BIN) << std::endl;
-        std::cout << "ULA Op: " << ula_op.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Imm Source: " << imm_source.read() << std::endl;
-        std::cout << "Mem Write: " << mem_write.read() << std::endl;
-        std::cout << "Reg Write: " << reg_write.read() << std::endl;
-        std::cout << "ULA Src: " << ula_src.read() << std::endl;
-        std::cout << "Mem to Reg: " << mem_to_reg.read() << std::endl;
-        std::cout << "PC Src: " << pc_src.read() << std::endl;
-        std::cout << "ULA Zero: " << ula_zero.read() << std::endl;
-        std::cout << "ULA Negative: " << ula_negative.read() << std::endl;
-        std::cout << "--------------------------------------------------------------------------------" << std::endl;
-        std::cout << "[REGISTROS]---------------------------------------------------------------------" << std::endl;
-        std::cout << "Source Reg 1: " << source_reg1.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Source Reg 2: " << source_reg2.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Dest Reg: " << dest_reg.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Read Reg 1: " << read_reg1.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Read Reg 2: " << read_reg2.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Write Back Data: " << write_back_data.read().to_string(SC_BIN) << std::endl;
-        std::cout << "-------------------------------------------------------------------------------" << std::endl;
-        std::cout << "[IMEDIATO]---------------------------------------------------------------------" << std::endl;
-        std::cout << "Raw Imm: " << raw_imm.read().to_string(SC_BIN) << std::endl;
-        std::cout << "Immediate: " << immediate.read().to_string(SC_BIN) << std::endl;
-        std::cout << "-------------------------------------------------------------------------------" << std::endl;
-        std::cout << "[ULA]--------------------------------------------------------------------------" << std::endl;
-        std::cout << "ULA Result: " << ula_result.read().to_string(SC_BIN) << std::endl;
-        std::cout << "ULA Src 2: " << ula_src2.read().to_string(SC_BIN) << std::endl;
-        std::cout << "-------------------------------------------------------------------------------" << std::endl;
-        std::cout << "[MEMORIA]----------------------------------------------------------------------" << std::endl;
-        std::cout << "Mem Read: " << mem_read.read().to_string(SC_BIN) << std::endl;
-        std::cout << "--------------------------------------------------------------------------------" << std::endl;
-        std::cout << "================================================================================" << std::endl;
-    }
-
-    // PROCESSO: sinais derivados da instrução
-    void decode_instruction() {
-        sc_uint<16> instr = instruction.read();
-        op.write(instr.range(15, 12));
-        dest_reg.write(instr.range(11, 9));
-        source_reg1.write(instr.range(8, 6));
-        // mudar depois pra ser responsabilidade do controle
-        source_reg2.write( (op.read() == 0b1000) ? instr.range(11, 9) : instr.range(5, 3));
-        raw_imm.write(instr.range(11, 0));
-    }
-
-
-    void ula_mux() {
-        switch (ula_src.read())
-        {
-        case 0b0:  // Case for ula_src = 0
-            ula_src2.write(read_reg2.read());
-            break;
-            
-        case 0b1:  // Case for ula_src = 1
-            ula_src2.write(immediate.read());
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    void write_back_mux() {
-        switch (mem_to_reg.read())
-        {
-        case false:  // Case for mem_to_reg = 0
-            write_back_data.write(ula_result.read());
-            break;
-            
-        case true:  // Case for mem_to_reg = 1
-            write_back_data.write(mem_read.read());
-            break;
-
-        default:
-            break;
-        }
     }
 
     // INSTÂNCIAS DE MÓDULOS
-    memory* instruction_memory;
+    PipeReg_IF_ID* if_id;
+    PipeReg_ID_EX* id_ex;
+    PipeReg_EX_MEM* ex_mem;
+    PipeReg_MEM_WB* mem_wb;
+
+    IFStage* if_stage;
+    IDStage* id_stage;
+    EXStage* ex_stage;
+    MEMStage* mem_stage;
+    WBStage* wb_stage;
+
     control* control_unit;
-    regfile* regfile_inst;
-    signext* sign_extender;
-    ula* ula_inst;
-    memory* data_memory;
+
 
     SC_CTOR(cpu) {
-        // Módulo: Instruction Memory (ROM)
-        std::cout << "Carregando memória de instruções..." << std::endl;
-        instruction_memory = new memory("instruction_memory");
-        instruction_memory->load_memory("../test_imemory.bin"); // Adicione esse arquivo no seu diretório de simulação
-
-        // Módulo: Memória de Dados
-        std::cout << "Carregando memória de dados..." << std::endl;
-        data_memory = new memory("data_memory");
-        data_memory->load_memory("../test_dmemory.bin"); // Adicione esse arquivo no seu diretório de simulação
-
-        //Debug
         SC_METHOD(debug_signals);
         sensitive << clk.pos();
-        dont_initialize();
-        
-        // Processos
-        SC_METHOD(pc_logic);
-        sensitive << clk.pos();
-        dont_initialize();
 
-        SC_METHOD(pc_next_logic);
-        sensitive << pc << pc_src << immediate;
+        // IF Stage
+        if_stage = new IFStage("if_stage");
+        // entradas
+        if_stage->clk(clk);
+        if_stage->rst_n(rst_n);
+        if_stage->pc_src(pc_src_ex);
+        if_stage->pc_branch(pc_branch);
+        // saídas
+        if_stage->pc_out(pc_if);
+        if_stage->instruction(instruction_if);
 
-        SC_METHOD(decode_instruction);
-        sensitive << clk.pos();
-        dont_initialize();
-        
-        SC_METHOD(ula_mux);
-        sensitive << ula_src << read_reg2 << immediate;
-        dont_initialize();
+        // IF ID Pipe Register
+        if_id = new PipeReg_IF_ID("if_id");
+        // entradas
+        if_id->clk(clk);
+        if_id->rst_n(rst_n);
+        if_id->pc_in(pc_if);
+        if_id->instruction_in(instruction_if);
+        // saídas
+        if_id->pc_out(pc_id);
+        if_id->instruction_out(instruction_id);
 
-        SC_METHOD(write_back_mux);
-        sensitive << mem_to_reg << ula_result << mem_read;
-        dont_initialize();
+        // ID Stage
+        id_stage = new IDStage("id_stage");
+        // entradas
+        id_stage->clk(clk);
+        id_stage->rst_n(rst_n);
+        id_stage->instruction(instruction_id);
+        id_stage->reg_write(reg_write_wb);
+        id_stage->write_back_data(write_back_data);
+        id_stage->dest_reg_back(dest_reg_wb);
+        id_stage->imm_source(imm_source);
+        // saídas
+        id_stage->read_data1(read_data1);
+        id_stage->read_data2(read_data2);
+        id_stage->immediate(immediate_id);
+        id_stage->op_out(op);        
 
-        rst_mem.write(true); // desativa reset da memoria
-        write_rom.write(false); // desativa escrita na memoria de instruções
-        null_data.write(0); // dado nulo para escrita na memória de instruções
-        
-        // Módulo: Instruction Memory (ROM)
-        instruction_memory->clk(clk);
-        instruction_memory->address(pc);
-        instruction_memory->write_data(null_data); // usar dado nulo para escrita
-        instruction_memory->write_enable(write_rom);
-        instruction_memory->rst_n(rst_mem);
-        instruction_memory->read_data(instruction);
-
-        // Módulo: Unidade de Controle
+        // Unidade de Controle
         control_unit = new control("control_unit");
+        // entrada
         control_unit->op(op);
-        control_unit->ula_zero(ula_zero);
-        control_unit->ula_negative(ula_negative);
-        control_unit->ula_op(ula_op);
+        control_unit->ula_zero(ula_zero_ex);
+        control_unit->ula_negative(ula_negative_ex);
+        // saídas
+        control_unit->ula_op(ula_op_id);
         control_unit->imm_source(imm_source);
-        control_unit->mem_write(mem_write);
-        control_unit->reg_write(reg_write);
-        control_unit->ula_src(ula_src);
-        control_unit->mem_to_reg(mem_to_reg);
-        control_unit->pc_src(pc_src);
+        control_unit->mem_write(mem_write_id);
+        control_unit->reg_write(reg_write_id);
+        control_unit->ula_src(ula_src_id);
+        control_unit->mem_to_reg(mem_to_reg_id);
+        control_unit->pc_src(pc_src_id);
 
-        // Módulo: Banco de Registradores
-        regfile_inst = new regfile("regfile");
-        regfile_inst->clk(clk);
-        regfile_inst->rst_n(rst_n);
-        regfile_inst->address1(source_reg1);
-        regfile_inst->address2(source_reg2);
-        regfile_inst->address3(dest_reg);
-        regfile_inst->write_enable(reg_write);
-        regfile_inst->write_data(write_back_data);
-        regfile_inst->read_data1(read_reg1);
-        regfile_inst->read_data2(read_reg2);
+        // ID EX Pipe Register
+        id_ex = new PipeReg_ID_EX("id_ex");
+        // entradas
+        id_ex->clk(clk);
+        id_ex->rst_n(rst_n);
+        id_ex->pc_in(pc_id);
+        id_ex->read_data1_in(read_data1);
+        id_ex->read_data2_in(read_data2);
+        id_ex->immediate_in(immediate_id);
+        id_ex->dest_reg_in(dest_reg_id);
 
-        // Módulo: Sign Extender
-        sign_extender = new signext("signext");
-        sign_extender->raw_src(raw_imm);
-        sign_extender->imm_source(imm_source);
-        sign_extender->immediate(immediate);
-
-        // Módulo: ULA
-        ula_inst = new ula("ula");
-        ula_inst->ula_op(ula_op);
-        ula_inst->src1(read_reg1);
-        ula_inst->src2(ula_src2);
-        ula_inst->ula_result(ula_result);
-        ula_inst->zero(ula_zero);
-        ula_inst->negative(ula_negative);
-
-        // Módulo: Memória de Dados
-        data_memory->clk(clk);
-        data_memory->address(ula_result);
-        data_memory->write_data(read_reg2); // presumivelmente
-        data_memory->write_enable(mem_write);
-        data_memory->rst_n(rst_mem);
-        data_memory->read_data(mem_read);
+        id_ex->ula_op_in(ula_op_id);
+        id_ex->ula_src_in(ula_src_id);
+        id_ex->mem_write_in(mem_write_id);
+        id_ex->mem_to_reg_in(mem_to_reg_id);
+        id_ex->reg_write_in(reg_write_id);
+        id_ex->pc_src_in(pc_src_id);
         
+        // saídas
+        id_ex->pc_out(pc_ex);
+        id_ex->read_data1_out(ula_src1);
+        id_ex->read_data2_out(ula_src2);
+        id_ex->immediate_out(immediate_ex);
+        id_ex->dest_reg_out(dest_reg_ex);
+
+        id_ex->ula_op_out(ula_op_ex);
+        id_ex->ula_src_out(ula_src_ex);
+        id_ex->mem_write_out(mem_write_ex);
+        id_ex->mem_to_reg_out(mem_to_reg_ex);
+        id_ex->reg_write_out(reg_write_ex);
+        id_ex->pc_src_out(pc_src_ex);
+        
+
+        // EX Stage
+        ex_stage = new EXStage("ex_stage");
+        // entradas
+        ex_stage->clk(clk);
+        ex_stage->rst_n(rst_n);
+        ex_stage->pc_in(pc_ex);
+        ex_stage->ula_op(ula_op_ex);
+        ex_stage->ula_src(ula_src_ex);
+        ex_stage->read_data1(ula_src1);
+        ex_stage->read_data2(ula_src2);
+        ex_stage->immediate(immediate_ex);
+        // saídas
+        ex_stage->ula_result(ula_result);
+        ex_stage->zero(ula_zero_ex);
+        ex_stage->negative(ula_negative_ex);
+        ex_stage->pc_branch(pc_branch);
+
+        // EX MEM Pipe Register
+        ex_mem = new PipeReg_EX_MEM("ex_mem");
+        // entradas
+        ex_mem->clk(clk);
+        ex_mem->rst_n(rst_n);
+        ex_mem->ula_result_in(ula_result);
+        ex_mem->write_data_in(ula_src2);
+        ex_mem->dest_reg_in(dest_reg_ex);
+
+        ex_mem->mem_write_in(mem_write_ex);
+        ex_mem->mem_to_reg_in(mem_to_reg_ex);
+        ex_mem->reg_write_in(reg_write_ex);
+
+        // saídas
+        ex_mem->ula_result_out(address);
+        ex_mem->write_data_out(write_data);
+        ex_mem->dest_reg_out(dest_reg_mem);
+
+        ex_mem->mem_write_out(mem_write_mem);
+        ex_mem->mem_to_reg_out(mem_to_reg_mem);
+        ex_mem->reg_write_out(reg_write_mem);
+
+        // MEM Stage
+        mem_stage = new MEMStage("mem_stage");
+        // entradas
+        mem_stage->clk(clk);
+        mem_stage->mem_write(mem_write_ex);
+        mem_stage->ula_result(address);
+        mem_stage->write_data(write_data);
+        // saídas
+        mem_stage->mem_read(read_data_mem);
+
+        // MEM WB Pipe Register
+        mem_wb = new PipeReg_MEM_WB("mem_wb");
+        // entradas
+        mem_wb->clk(clk);
+        mem_wb->rst_n(rst_n);
+        mem_wb->mem_read_in(read_data_mem);
+        mem_wb->ula_result_in(address);
+        mem_wb->dest_reg_in(dest_reg_mem);
+
+        mem_wb->mem_to_reg_in(mem_to_reg_mem);
+        mem_wb->reg_write_in(reg_write_mem);
+
+        // saídas
+        mem_wb->mem_read_out(read_data_wb);
+        mem_wb->ula_result_out(ula_result_wb);
+        mem_wb->dest_reg_out(dest_reg_wb);
+
+        mem_wb->mem_to_reg_out(mem_to_reg_wb);
+        mem_wb->reg_write_out(reg_write_wb);
+
+        // WB Stage
+        wb_stage = new WBStage("wb_stage");
+        // entradas
+        wb_stage->clk(clk);
+        wb_stage->mem_to_reg(mem_to_reg_wb);
+        wb_stage->ula_result(ula_result_wb);
+        wb_stage->mem_read(read_data_wb);
+        // saídas
+        wb_stage->write_back_data(write_back_data);
     }
 };
