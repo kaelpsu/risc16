@@ -15,6 +15,10 @@ SC_MODULE(IFStage) {
     sc_signal<sc_uint<16>> pc, pc_next;
     sc_out<sc_uint<16>> pc_out, instruction;
 
+    sc_signal<bool> rst_mem;
+    sc_signal<bool> write_enable;
+    sc_signal<sc_uint<16>> null_data;
+
     memory *instruction_memory;
 
     void pc_process() {
@@ -62,10 +66,6 @@ SC_MODULE(IFStage) {
         sensitive << clk.pos();
         SC_METHOD(pc_mux);
         sensitive << clk.pos();
-        
-        sc_signal<bool> rst_mem;
-        sc_signal<bool> write_enable;
-        sc_signal<sc_uint<16>> null_data;
         
         rst_mem.write(true); // desativa reset da memoria
         write_enable.write(false); // desativa escrita na memoria de instruções
