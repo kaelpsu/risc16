@@ -16,27 +16,27 @@ file(GLOB SRC_FILES src/*.cpp)
 file(GLOB TB_FILES tests/*.cpp)
 
 # Compilar cada testbench como executável separado
-foreach(tb_file ${TB_FILES})
-    get_filename_component(tb_name ${tb_file} NAME_WE)
-    add_executable(${tb_name} ${SRC_FILES} ${tb_file})
-    target_include_directories(${tb_name} PRIVATE ${SYSTEMC_INCLUDE_DIR})
-    target_link_libraries(${tb_name} ${SYSTEMC_LIBRARY_DIR}/libsystemc.so)
-endforeach()
+# foreach(tb_file ${TB_FILES})
+#     get_filename_component(tb_name ${tb_file} NAME_WE)
+#     add_executable(${tb_name} ${SRC_FILES} ${tb_file})
+#     target_include_directories(${tb_name} PRIVATE ${SYSTEMC_INCLUDE_DIR})
+#     target_link_libraries(${tb_name} ${SYSTEMC_LIBRARY_DIR}/libsystemc.so)
+# endforeach()
 
-# # Adiciona os arquivos de origem
-# set(SRC_FILES
-#     src/cpu.cpp
-# )
+# Adiciona os arquivos de origem
+set(SRC_FILES
+    src/cpu.cpp
+)
 
-# # Adiciona os arquivos de teste
-# set(TB_FILES
-#     tests/cpu_tb.cpp
-# )
+# Adiciona os arquivos de teste
+set(TB_FILES
+    tests/cpu_tb.cpp
+)
 
-# # Adiciona o executável para o arquivo de teste
-# add_executable(cpu_tb ${SRC_FILES} ${TB_FILES})
+# Adiciona o executável para o arquivo de teste
+add_executable(cpu_tb ${SRC_FILES} ${TB_FILES})
 
-# # Link against SystemC
-# target_include_directories(cpu_tb PRIVATE ${SYSTEMC_INCLUDE_DIR})
-# target_link_libraries(cpu_tb ${SYSTEMC_LIBRARY_DIR}/libsystemc.so)
+# Link against SystemC
+target_include_directories(cpu_tb PRIVATE ${SYSTEMC_INCLUDE_DIR})
+target_link_libraries(cpu_tb ${SYSTEMC_LIBRARY_DIR}/libsystemc.so)
 
