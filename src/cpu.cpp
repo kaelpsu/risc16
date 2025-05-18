@@ -1,6 +1,7 @@
 #include <systemc.h>
 #include "stageHeaders.cpp"
 #include "pipeRegs.cpp"
+#include "hazardDetectionUnit.cpp"
 
 SC_MODULE(cpu) {
     // Entradas
@@ -47,6 +48,7 @@ SC_MODULE(cpu) {
     sc_signal<bool> reg_write_idex, reg_write_exmem, reg_write_memwb;
     sc_signal<bool> stall;
 
+
     // CONTROLE
     sc_signal<sc_uint<4>> op;
     sc_signal<bool> ula_zero_ex, ula_zero_mem;
@@ -79,12 +81,14 @@ SC_MODULE(cpu) {
     MEMStage* mem_stage;
     WBStage* wb_stage;
 
-    control* control_unit;
+    hazardUnit* hazard_unit;
+    
 
 
     SC_CTOR(cpu) {
         SC_METHOD(debug_signals);
         sensitive << clk.pos();
+        
 
         // IF Stage
         if_stage = new IFStage("if_stage");
@@ -242,5 +246,22 @@ SC_MODULE(cpu) {
         wb_stage->mem_read(read_data_wb);
         // saídas
         wb_stage->write_back_data(write_back_data);
+        
+        
+        // HAZARD DETECTION UNIT
+        hazard_unit = new hazardUnit("hazard_unit");
+        // entradas
+        hazard_unit->clk(clk);
+        hazard_unit->rst_n(rst_n);
+        hazard_unit->rs_id(rs_id);
+        hazard_unit->rt_id(rt_id);
+        hazard_unit->rd_ex(rd_ex);
+        hazard_unit->rd_mem(rd_mem);
+        hazard_unit->rd_wb(rd_wb);
+        hazard_unit->reg_write_ex(reg_write_idex);
+        hazard_unit->reg_write_mem(reg_write_exmem);
+        hazard_unit->reg_write_wb(reg_write_memwb);
+        // saídas
+        hazard_unit->stall(stall);
     }
 };
