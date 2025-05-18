@@ -24,7 +24,7 @@ SC_MODULE(regfile) {
 
     // Escrita síncrona
     void write_process() {
-        if (rst_n.read() == false) {
+        if (!rst_n.read()) {
             for (int i = 0; i < 8; i++) {
                 registers[i] = 0;
             }
@@ -44,6 +44,6 @@ SC_MODULE(regfile) {
         sensitive << clk.pos();
 
         SC_METHOD(read_process);
-        sensitive << address1 << address2;
+        sensitive << address1 << address2 << clk.pos();
     }
 };
