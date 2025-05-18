@@ -41,6 +41,11 @@ SC_MODULE(cpu) {
     // PC Branch   
     sc_signal<sc_uint<16>> pc_branch;
 
+    // HAZARD DETECTION
+    sc_signal<sc_uint<3>> rs_id, rt_id;
+    sc_signal<sc_uint<3>> rd_ex, rd_mem, rd_wb;
+    sc_signal<bool> reg_write_idex, reg_write_exmem, reg_write_memwb;
+    sc_signal<bool> stall;
 
     // CONTROLE
     sc_signal<sc_uint<4>> op;
