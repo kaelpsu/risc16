@@ -13,6 +13,7 @@ SC_MODULE(IFStage) {
     sc_in<bool> clk, rst_n;
     sc_in<sc_uint<16>>pc_branch;
     sc_in<bool> pc_src;
+    sc_in<bool> stall;
     sc_signal<sc_uint<16>> pc, pc_next;
     sc_out<sc_uint<16>> pc_out, instruction;
 
@@ -25,7 +26,7 @@ SC_MODULE(IFStage) {
     void pc_process() {
         if (!rst_n.read())
             pc.write(0);
-        else if (clk.posedge())
+        else if (!stall.read())
             pc.write(pc_next.read());
     }
 
@@ -50,6 +51,7 @@ SC_MODULE(IFStage) {
     
     void debug_signals() {
         std::cout << "[IF]----------------------------------------------------------------------------" << std::endl;
+        if (stall.read()) { std::cout << "(stall)" << std::endl; }
         std::cout << "PC: " << pc.read().to_string(SC_BIN) << std::endl;
         std::cout << "PC Branch: " << pc_branch.read().to_string(SC_BIN) << std::endl;
         std::cout << "PC + 2: " << pc_out.read().to_string(SC_BIN) << std::endl;
@@ -102,6 +104,9 @@ SC_MODULE(IDStage) {
     sc_out<sc_uint<16>> read_data1, read_data2, immediate;
     sc_out<sc_uint<3>> dest_reg_out;
 
+    // para hazard detection
+    sc_out<sc_uint<3>> rs_id, rt_id;
+
     // CONTROL
     // Entradas
     sc_in<bool> ula_zero;
@@ -124,8 +129,10 @@ SC_MODULE(IDStage) {
         dest_reg_out.write(instr.range(11, 9));
         source_reg1.write(instr.range(8, 6));
         // mudar depois pra ser responsabilidade do controle
-        source_reg2.write( (op.read() == 0b1000) ? instr.range(11, 9) : instr.range(5, 3));
+        source_reg2.write( (instr.range(15, 12) == 0b1000) ? instr.range(11, 9) : instr.range(5, 3));
         raw_imm.write(instr.range(11, 0));
+        rs_id.write(instr.range(8, 6));
+        rt_id.write((instr.range(15, 12) == 0b1000) ? instr.range(11, 9) : instr.range(5, 3));
     }
 
     void debug_signals() {
@@ -145,7 +152,7 @@ SC_MODULE(IDStage) {
 
     SC_CTOR(IDStage) {
         SC_METHOD(decode_instr);
-        sensitive << instruction;
+        sensitive << instruction << clk.pos();
         
         // Unidade de Controle
         control_unit = new control("control_unit");
