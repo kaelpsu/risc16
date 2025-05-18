@@ -27,7 +27,7 @@ SC_MODULE(cpu_tb) {
         rst_n.write(true);
 
         // Roda por alguns ciclos
-        for (int i = 0; i < 30; ++i) {
+        for (int i = 0; i < 45; ++i) {
             wait(20, SC_NS);
         }
 
