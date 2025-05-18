@@ -74,22 +74,22 @@ SC_MODULE(cpu) {
     PipeReg_ID_EX* id_ex;
     PipeReg_EX_MEM* ex_mem;
     PipeReg_MEM_WB* mem_wb;
-
+    
     IFStage* if_stage;
     IDStage* id_stage;
     EXStage* ex_stage;
     MEMStage* mem_stage;
     WBStage* wb_stage;
-
+    
     hazardUnit* hazard_unit;
     
-
-
+    
+    
     SC_CTOR(cpu) {
         SC_METHOD(debug_signals);
         sensitive << clk.pos();
         
-
+        
         // IF Stage
         if_stage = new IFStage("if_stage");
         // entradas
@@ -97,10 +97,11 @@ SC_MODULE(cpu) {
         if_stage->rst_n(rst_n);
         if_stage->pc_src(pc_src_ex);
         if_stage->pc_branch(pc_branch);
+        if_stage->stall(stall);
         // saídas
         if_stage->pc_out(pc_if);
         if_stage->instruction(instruction_if);
-
+        
         // IF ID Pipe Register
         if_id = new PipeReg_IF_ID("if_id");
         // entradas
@@ -108,10 +109,11 @@ SC_MODULE(cpu) {
         if_id->rst_n(rst_n);
         if_id->pc_in(pc_if);
         if_id->instruction_in(instruction_if);
+        if_id->stall(stall);
         // saídas
         if_id->pc_out(pc_id);
         if_id->instruction_out(instruction_id);
-
+        
         // ID Stage
         id_stage = new IDStage("id_stage");
         // entradas
@@ -134,7 +136,9 @@ SC_MODULE(cpu) {
         id_stage->ula_src(ula_src_id);
         id_stage->mem_to_reg(mem_to_reg_id);
         id_stage->pc_src(pc_src_id);
-
+        id_stage->rs_id(rs_id);
+        id_stage->rt_id(rt_id);
+        
         // ID EX Pipe Register
         id_ex = new PipeReg_ID_EX("id_ex");
         // entradas
@@ -145,29 +149,31 @@ SC_MODULE(cpu) {
         id_ex->read_data2_in(read_data2);
         id_ex->immediate_in(immediate_id);
         id_ex->dest_reg_in(dest_reg_id);
-
+        
         id_ex->ula_op_in(ula_op_id);
         id_ex->ula_src_in(ula_src_id);
         id_ex->mem_write_in(mem_write_id);
         id_ex->mem_to_reg_in(mem_to_reg_id);
         id_ex->reg_write_in(reg_write_id);
-        id_ex->pc_src_in(pc_src_id);
-        
+        id_ex->pc_src_in(pc_src_id);        
         // saídas
         id_ex->pc_out(pc_ex);
         id_ex->read_data1_out(ula_src1);
         id_ex->read_data2_out(ula_src2);
         id_ex->immediate_out(immediate_ex);
         id_ex->dest_reg_out(dest_reg_ex);
-
+        
         id_ex->ula_op_out(ula_op_ex);
         id_ex->ula_src_out(ula_src_ex);
         id_ex->mem_write_out(mem_write_ex);
         id_ex->mem_to_reg_out(mem_to_reg_ex);
         id_ex->reg_write_out(reg_write_ex);
         id_ex->pc_src_out(pc_src_ex);
-        
 
+        id_ex->dest_idex(rd_ex);
+        id_ex->reg_write_idex(reg_write_idex);
+        
+        
         // EX Stage
         ex_stage = new EXStage("ex_stage");
         // entradas
@@ -184,7 +190,7 @@ SC_MODULE(cpu) {
         ex_stage->zero(ula_zero_ex);
         ex_stage->negative(ula_negative_ex);
         ex_stage->pc_branch(pc_branch);
-
+        
         // EX MEM Pipe Register
         ex_mem = new PipeReg_EX_MEM("ex_mem");
         // entradas
@@ -193,20 +199,23 @@ SC_MODULE(cpu) {
         ex_mem->ula_result_in(ula_result);
         ex_mem->write_data_in(ula_src2);
         ex_mem->dest_reg_in(dest_reg_ex);
-
+        
         ex_mem->mem_write_in(mem_write_ex);
         ex_mem->mem_to_reg_in(mem_to_reg_ex);
         ex_mem->reg_write_in(reg_write_ex);
-
+        
         // saídas
         ex_mem->ula_result_out(address);
         ex_mem->write_data_out(write_data);
         ex_mem->dest_reg_out(dest_reg_mem);
-
+        
         ex_mem->mem_write_out(mem_write_mem);
         ex_mem->mem_to_reg_out(mem_to_reg_mem);
         ex_mem->reg_write_out(reg_write_mem);
 
+        ex_mem->dest_exmem(rd_mem);
+        ex_mem->reg_write_exmem(reg_write_exmem);
+        
         // MEM Stage
         mem_stage = new MEMStage("mem_stage");
         // entradas
@@ -216,7 +225,7 @@ SC_MODULE(cpu) {
         mem_stage->write_data(write_data);
         // saídas
         mem_stage->mem_read(read_data_mem);
-
+        
         // MEM WB Pipe Register
         mem_wb = new PipeReg_MEM_WB("mem_wb");
         // entradas
@@ -225,18 +234,21 @@ SC_MODULE(cpu) {
         mem_wb->mem_read_in(read_data_mem);
         mem_wb->ula_result_in(address);
         mem_wb->dest_reg_in(dest_reg_mem);
-
+        
         mem_wb->mem_to_reg_in(mem_to_reg_mem);
         mem_wb->reg_write_in(reg_write_mem);
-
+        
         // saídas
         mem_wb->mem_read_out(read_data_wb);
         mem_wb->ula_result_out(ula_result_wb);
         mem_wb->dest_reg_out(dest_reg_wb);
-
+        
         mem_wb->mem_to_reg_out(mem_to_reg_wb);
         mem_wb->reg_write_out(reg_write_wb);
 
+        mem_wb->dest_memwb(rd_wb);
+        mem_wb->reg_write_memwb(reg_write_memwb);
+        
         // WB Stage
         wb_stage = new WBStage("wb_stage");
         // entradas
