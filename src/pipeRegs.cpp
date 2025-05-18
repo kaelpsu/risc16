@@ -2,7 +2,7 @@
 
 // PipeReg IF/ID
 SC_MODULE(PipeReg_IF_ID) {
-    sc_in<bool> clk, rst_n;
+    sc_in<bool> clk, rst_n, stall;
     sc_in<sc_uint<16>> pc_in, instruction_in;
     sc_out<sc_uint<16>> pc_out, instruction_out;
 
@@ -21,8 +21,12 @@ SC_MODULE(PipeReg_IF_ID) {
             pc_reg.write(0);
             instruction_reg.write(0);
         } else {
-            pc_reg.write(pc_in.read());
-            instruction_reg.write(instruction_in.read());
+            if (!stall.read()) {
+                pc_reg.write(pc_in.read());
+                instruction_reg.write(instruction_in.read());
+            } else {
+                std::cout << "(stall)" << std::endl;
+            }
         }
     }
 
@@ -61,6 +65,8 @@ SC_MODULE(PipeReg_ID_EX) {
     sc_out<bool> ula_src_out;
     sc_out<bool> reg_write_out;
     sc_out<bool> pc_src_out;
+    sc_out<sc_uint<3>> dest_idex;
+    sc_out<bool>       reg_write_idex;  
 
     // Registradores internos
     sc_signal<sc_uint<16>> pc_reg, read_data1_reg, read_data2_reg, immediate_reg;
@@ -70,18 +76,21 @@ SC_MODULE(PipeReg_ID_EX) {
 
     // Primeiro escreve nas saídas
     void write_outputs() {
-        pc_out.write(pc_reg.read());
-        read_data1_out.write(read_data1_reg.read());
-        read_data2_out.write(read_data2_reg.read());
-        immediate_out.write(immediate_reg.read());
-        dest_reg_out.write(dest_reg_reg.read());
+            pc_out.write(pc_reg.read());
+            read_data1_out.write(read_data1_reg.read());
+            read_data2_out.write(read_data2_reg.read());
+            immediate_out.write(immediate_reg.read());
+            dest_reg_out.write(dest_reg_reg.read());
 
-        mem_write_out.write(mem_write_reg.read());
-        mem_to_reg_out.write(mem_to_reg_reg.read());
-        ula_op_out.write(ula_op_reg.read());
-        ula_src_out.write(ula_src_reg.read());
-        reg_write_out.write(reg_write_reg.read());
-        pc_src_out.write(pc_src_reg.read());
+            mem_write_out.write(mem_write_reg.read());
+            mem_to_reg_out.write(mem_to_reg_reg.read());
+            ula_op_out.write(ula_op_reg.read());
+            ula_src_out.write(ula_src_reg.read());
+            reg_write_out.write(reg_write_reg.read());
+            pc_src_out.write(pc_src_reg.read());
+
+            dest_idex.write(dest_reg_reg.read());
+            reg_write_idex.write(reg_write_reg.read());
     }
 
     // Depois captura entradas na borda de clock
@@ -140,6 +149,9 @@ SC_MODULE(PipeReg_EX_MEM) {
     sc_out<sc_uint<3>>  dest_reg_out;
     sc_out<bool>        mem_write_out, mem_to_reg_out, reg_write_out;
 
+    sc_out<sc_uint<3>> dest_exmem;
+    sc_out<bool>       reg_write_exmem;  
+
     // Registradores internos
     sc_signal<sc_uint<16>> ula_result_reg, write_data_reg;
     sc_signal<sc_uint<3>>  dest_reg_reg;
@@ -153,6 +165,9 @@ SC_MODULE(PipeReg_EX_MEM) {
         mem_write_out.write(mem_write_reg.read());
         mem_to_reg_out.write(mem_to_reg_reg.read());
         reg_write_out.write(reg_write_reg.read());
+
+        dest_exmem.write(dest_reg_reg.read());
+        reg_write_exmem.write(reg_write_reg.read());
     }
 
     // 2) Captura as entradas na borda de clock para uso no próximo ciclo
@@ -200,6 +215,9 @@ SC_MODULE(PipeReg_MEM_WB) {
     sc_out<sc_uint<3>>  dest_reg_out;
     sc_out<bool>        mem_to_reg_out, reg_write_out;
 
+    sc_out<sc_uint<3>> dest_memwb;
+    sc_out<bool>       reg_write_memwb;  
+
     // Registradores internos
     sc_signal<sc_uint<16>> mem_read_reg, ula_result_reg;
     sc_signal<sc_uint<3>>  dest_reg_reg;
@@ -212,6 +230,9 @@ SC_MODULE(PipeReg_MEM_WB) {
         dest_reg_out.write(dest_reg_reg.read());
         mem_to_reg_out.write(mem_to_reg_reg.read());
         reg_write_out.write(reg_write_reg.read());
+
+        dest_memwb.write(dest_reg_reg.read());
+        reg_write_memwb.write(reg_write_reg.read());
     }
 
     // 2) Captura as entradas na borda de clock (para uso no próximo ciclo)
@@ -231,6 +252,12 @@ SC_MODULE(PipeReg_MEM_WB) {
         }
     }
 
+    void debug_signals() {
+        std::cout << "[MEM/WB]---------------------------------------------------------------------------" << std::endl;
+        std::cout << "Dest Reg: " << dest_reg_reg.read().to_string(SC_BIN) << std::endl;
+        std::cout << "--------------------------------------------------------------------------------" << std::endl;
+    }
+
     SC_CTOR(PipeReg_MEM_WB) {
         // Atualiza as saídas sempre que algum registrador interno muda
         SC_METHOD(write_outputs);
@@ -239,6 +266,10 @@ SC_MODULE(PipeReg_MEM_WB) {
 
         // Captura as entradas na borda positiva do clock
         SC_METHOD(latch_inputs);
+        sensitive << clk.pos();
+
+        // Método para depuração
+        SC_METHOD(debug_signals);
         sensitive << clk.pos();
     }
 };
