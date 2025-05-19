@@ -8,6 +8,8 @@ SC_MODULE(cpu) {
     sc_in<bool> clk;
     sc_in<bool> rst_n;
 
+    sc_signal<bool> clear;
+
     // IF
     sc_signal<sc_uint<16>> pc_if;
     sc_signal<sc_uint<16>> instruction_if;
@@ -95,6 +97,7 @@ SC_MODULE(cpu) {
         // entradas
         if_stage->clk(clk);
         if_stage->rst_n(rst_n);
+        if_stage->clear(clear);
         if_stage->pc_src(pc_src_ex);
         if_stage->pc_branch(pc_branch);
         if_stage->stall(stall);
@@ -107,6 +110,7 @@ SC_MODULE(cpu) {
         // entradas
         if_id->clk(clk);
         if_id->rst_n(rst_n);
+        if_id->clear(clear);
         if_id->pc_in(pc_if);
         if_id->instruction_in(instruction_if);
         if_id->stall(stall);
@@ -119,6 +123,7 @@ SC_MODULE(cpu) {
         // entradas
         id_stage->clk(clk);
         id_stage->rst_n(rst_n);
+        id_stage->clear(clear);
         id_stage->instruction(instruction_id);
         id_stage->reg_write_in(reg_write_wb);
         id_stage->write_back_data(write_back_data);
@@ -169,6 +174,7 @@ SC_MODULE(cpu) {
         id_ex->mem_to_reg_out(mem_to_reg_ex);
         id_ex->reg_write_out(reg_write_ex);
         id_ex->pc_src_out(pc_src_ex);
+        id_ex->clear(clear);
 
         id_ex->dest_idex(rd_ex);
         id_ex->reg_write_idex(reg_write_idex);

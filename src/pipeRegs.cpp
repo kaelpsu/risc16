@@ -2,7 +2,7 @@
 
 // PipeReg IF/ID
 SC_MODULE(PipeReg_IF_ID) {
-    sc_in<bool> clk, rst_n, stall;
+    sc_in<bool> clk, rst_n, stall, clear;
     sc_in<sc_uint<16>> pc_in, instruction_in;
     sc_out<sc_uint<16>> pc_out, instruction_out;
 
@@ -17,7 +17,7 @@ SC_MODULE(PipeReg_IF_ID) {
 
     // Depois captura entradas na borda de clock
     void latch_inputs() {
-        if (!rst_n.read()) {
+        if (!rst_n.read() || !clear.read()) {
             pc_reg.write(0);
             instruction_reg.write(0);
         } else {
@@ -67,6 +67,7 @@ SC_MODULE(PipeReg_ID_EX) {
     sc_out<bool> pc_src_out;
     sc_out<sc_uint<3>> dest_idex;
     sc_out<bool>       reg_write_idex;  
+    sc_out<bool> clear;
 
     // Registradores internos
     sc_signal<sc_uint<16>> pc_reg, read_data1_reg, read_data2_reg, immediate_reg;
@@ -88,6 +89,7 @@ SC_MODULE(PipeReg_ID_EX) {
             ula_src_out.write(ula_src_reg.read());
             reg_write_out.write(reg_write_reg.read());
             pc_src_out.write(pc_src_reg.read());
+            clear.write(!pc_src_out.read());
 
             dest_idex.write(dest_reg_reg.read());
             reg_write_idex.write(reg_write_reg.read());

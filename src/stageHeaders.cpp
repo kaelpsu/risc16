@@ -10,7 +10,7 @@
 
 // IF Stage
 SC_MODULE(IFStage) {
-    sc_in<bool> clk, rst_n;
+    sc_in<bool> clk, rst_n, clear;
     sc_in<sc_uint<16>>pc_branch;
     sc_in<bool> pc_src;
     sc_in<bool> stall;
@@ -58,6 +58,7 @@ SC_MODULE(IFStage) {
         std::cout << "PC Src: " << pc_src.read() << std::endl;
         std::cout << "PC Next: " << pc_next.read().to_string(SC_BIN) << std::endl;
         std::cout << "Instruction: " << instruction.read().to_string(SC_BIN) << std::endl;
+        std::cout << "Clear: " << clear.read() << std::endl;
         std::cout << "--------------------------------------------------------------------------------" << std::endl;
     }
 
@@ -91,7 +92,7 @@ SC_MODULE(IFStage) {
 
 // ID Stage
 SC_MODULE(IDStage) {
-    sc_in<bool> clk, rst_n;
+    sc_in<bool> clk, rst_n, clear;
     sc_in<sc_uint<16>> instruction, write_back_data;
     sc_in<sc_uint<3>> dest_reg_back;
     sc_in<bool> reg_write_in;
@@ -124,7 +125,12 @@ SC_MODULE(IDStage) {
     signext *sign_extender;
 
     void decode_instr() {
-        auto instr = instruction.read();
+        sc_uint<16> instr;
+        if (!rst_n.read() || !clear.read()) {
+            instr = 0;
+        } else {
+            instr = instruction.read();
+        }
         op.write(instr.range(15, 12));
         dest_reg_out.write(instr.range(11, 9));
         source_reg1.write(instr.range(8, 6));
@@ -147,6 +153,7 @@ SC_MODULE(IDStage) {
         std::cout << "Read Data 2: " << read_data2.read().to_string(SC_BIN) << std::endl;
         std::cout << "Dest Reg Back: " << dest_reg_back.read().to_string(SC_BIN) << std::endl;
         std::cout << "Write Back Data: " << write_back_data.read().to_string(SC_BIN) << std::endl;
+        std::cout << "Clear: " << clear.read() << std::endl;
         std::cout << "--------------------------------------------------------------------------------" << std::endl;
     }
 
